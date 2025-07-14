@@ -463,7 +463,7 @@ async function performOCR(file) {
         
         const data = await response.json();
         
-   if (data.responses && data.responses[0] && data.responses[0].textAnnotations) {
+if (data.responses && data.responses[0] && data.responses[0].textAnnotations) {
     const extractedText = data.responses[0].textAnnotations[0].description;
     console.log('Google Vision found text:', extractedText); // ← ADD THIS LINE
     return parseBingoFromText(extractedText);
