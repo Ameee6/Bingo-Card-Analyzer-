@@ -476,6 +476,49 @@ async function performOCR(file) {
         return getDefaultBingoCard();
     }
 }
+
+        // Parse bingo numbers from OCR text
+function parseBingoFromText(text) {
+    try {
+        console.log('OCR Text:', text); // This will help us see what Google Vision found
+        
+        // Extract all numbers from the text
+        const numbers = text.match(/\b\d{1,2}\b/g);
+        
+        if (!numbers || numbers.length < 20) {
+            console.log('Not enough numbers found, using default card');
+            return getDefaultBingoCard();
+        }
+        
+        // Convert to integers and filter for valid bingo numbers (1-75)
+        const validNumbers = numbers
+            .map(n => parseInt(n))
+            .filter(n => n >= 1 && n <= 75)
+            .slice(0, 24); // Take first 24 numbers (25 minus FREE space)
+        
+        // Create 5x5 grid
+        const grid = [];
+        let numIndex = 0;
+        
+        for (let row = 0; row < 5; row++) {
+            grid[row] = [];
+            for (let col = 0; col < 5; col++) {
+                if (row === 2 && col === 2) {
+                    grid[row][col] = 'FREE';
+                } else {
+                    grid[row][col] = validNumbers[numIndex] || Math.floor(Math.random() * 75) + 1;
+                    numIndex++;
+                }
+            }
+        }
+        
+        return grid;
+        
+    } catch (error) {
+        console.error('Parse error:', error);
+        return getDefaultBingoCard();
+    }
+}
         
 function getDefaultBingoCard() {
     // Generate a valid bingo card with proper column ranges
