@@ -413,7 +413,7 @@
                     const file = uploadedFiles[i];
                     
                     // Simulate OCR analysis - in a real app, you'd use OCR API
-                    const numbers = await simulateOCR(file);
+                    const numbers = await performOCR(file);
                     const analysis = analyzeNumbers(numbers);
                     
                     analyzedCards.push({
@@ -433,52 +433,46 @@
                 loading.style.display = 'none';
             }
         }
-
-        // Simulate OCR - replace with real OCR API
-        async function simulateOCR(file) {
-            // Simulate processing delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Generate realistic bingo numbers for demo
-            const numbers = [];
-            
-            // B column: 1-15
-            numbers.push(Math.floor(Math.random() * 15) + 1);
-            // I column: 16-30
-            numbers.push(Math.floor(Math.random() * 15) + 16);
-            // N column: 31-45 (with FREE space)
-            numbers.push(Math.floor(Math.random() * 15) + 31);
-            numbers.push('FREE');
-            numbers.push(Math.floor(Math.random() * 15) + 31);
-            // G column: 46-60
-            numbers.push(Math.floor(Math.random() * 15) + 46);
-            // O column: 61-75
-            numbers.push(Math.floor(Math.random() * 15) + 61);
-
-            // Add more numbers for a 5x5 grid (25 total, with FREE in center)
-            while (numbers.length < 24) {
-                const num = Math.floor(Math.random() * 75) + 1;
-                if (!numbers.includes(num)) {
-                    numbers.push(num);
-                }
-            }
-
-            // Arrange as 5x5 grid with FREE in center
-            const grid = [];
-            let index = 0;
-            for (let row = 0; row < 5; row++) {
-                grid[row] = [];
-                for (let col = 0; col < 5; col++) {
-                    if (row === 2 && col === 2) {
-                        grid[row][col] = 'FREE';
-                    } else {
-                        grid[row][col] = numbers[index++];
-                    }
-                }
-            }
-
-            return grid;
+// Real OCR using Netlify Function
+async function performOCR(file) {
+    try {
+        // Convert file to base64
+        const base64 = await fileToBase64(file);
+        
+        // Call your Netlify function
+        const response = await fetch('/api/ocr-processor', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ imageData: base64 })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            return result.grid;
+        } else {
+            console.log('OCR failed, using fallback:', result.error);
+            return getDefaultBingoCard();
         }
+        
+    } catch (error) {
+        console.error('OCR Error:', error);
+        return getDefaultBingoCard();
+    }
+}
+        
+// Helper function to convert file to base64
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+        
 
         function analyzeNumbers(grid) {
             let odds = 0;
