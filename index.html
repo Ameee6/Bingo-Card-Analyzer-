@@ -485,7 +485,7 @@ function parseBingoFromText(text) {
         console.log('OCR Text:', text); // This will help us see what Google Vision found
         
         // Extract all numbers from the text
-        const numbers = text.match(/\b\d{1,2}\b/g);
+        const numbers = text.match(/\d+/g);
         
         if (!numbers || numbers.length < 20) {
             console.log('Not enough numbers found, using default card');
@@ -495,7 +495,7 @@ function parseBingoFromText(text) {
         // Convert to integers and filter for valid bingo numbers (1-75)
         const validNumbers = numbers
             .map(n => parseInt(n))
-            .filter(n => n >= 1 && n <= 75)
+            .filter(n => n >= 1 && n <= 99)
             .slice(0, 24); // Take first 24 numbers (25 minus FREE space)
         
         // Create 5x5 grid
