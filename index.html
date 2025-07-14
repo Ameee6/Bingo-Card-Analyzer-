@@ -466,7 +466,7 @@ async function performOCR(file) {
                         content: base64Content
                     },
                     features: [{
-                        type: 'TEXT_DETECTION'
+                        type: 'DOCUMENT_TEXT_DETECTION'
                     }]
                 }]
             })
@@ -474,20 +474,62 @@ async function performOCR(file) {
         
         const data = await response.json();
         
-if (data.responses && data.responses[0] && data.responses[0].textAnnotations) {
-    const extractedText = data.responses[0].textAnnotations[0].description;
-    console.log('Google Vision found text:', extractedText); // ← ADD THIS LINE
-    return parseBingoFromText(extractedText);
+if (data.responses && data.responses[0] && data.responses[0].fullTextAnnotation) {
+    const fullText = data.responses[0].fullTextAnnotation;
+    console.log('Full structured text found');
+    
+    // Extract just the number blocks from structured data
+    const blocks = fullText.pages[0].blocks;
+    const numbers = [];
+    
+    blocks.forEach(block => {
+        block.paragraphs.forEach(paragraph => {
+            paragraph.words.forEach(word => {
+                const text = word.symbols.map(s => s.text).join('');
+                const num = parseInt(text);
+                if (!isNaN(num) && num >= 1 && num <= 75) {
+                    numbers.push(num);
+                }
+            });
+        });
+    });
+    
+    console.log('Structured numbers found:', numbers);
+    
+    if (numbers.length >= 24) {
+        return createBingoGrid(numbers.slice(0, 24));
+    } else {
+        throw new Error(`Only found ${numbers.length} valid bingo numbers in structured format. Need 24 for accurate analysis.`);
+    }
+    
 } else {
-    console.log('Google Vision response:', JSON.stringify(data, null, 2)); // ← ADD THIS LINE
-    console.log('No text found, using default card');
-    return getDefaultBingoCard();
+    console.log('Google Vision response:', JSON.stringify(data, null, 2));
+    throw new Error('No structured text found. Please try a clearer photo with better lighting.');
 }
         
     } catch (error) {
         console.error('OCR Error:', error);
         return getDefaultBingoCard();
     }
+}
+
+        function createBingoGrid(numbers) {
+    const grid = [];
+    let numIndex = 0;
+    
+    for (let row = 0; row < 5; row++) {
+        grid[row] = [];
+        for (let col = 0; col < 5; col++) {
+            if (row === 2 && col === 2) {
+                grid[row][col] = 'FREE';
+            } else {
+                grid[row][col] = numbers[numIndex];
+                numIndex++;
+            }
+        }
+    }
+    
+    return grid;
 }
 
         // Parse bingo numbers from OCR text
