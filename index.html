@@ -507,24 +507,7 @@ if (data.responses && data.responses[0] && data.responses[0].fullTextAnnotation)
     throw new Error('No structured text found. Please try a clearer photo with better lighting.');
 }
         
-    } catch (error) {
-        console.error('OCR Error:', error);
-        return getDefaultBingoCard();
-    }
-}
-
-        function createBingoGrid(numbers) {
-    const grid = [];
-    let numIndex = 0;
-    
-    for (let row = 0; row < 5; row++) {
-        grid[row] = [];
-        for (let col = 0; col < 5; col++) {
-            if (row === 2 && col === 2) {
-                grid[row][col] = 'FREE';
-            } else {
-                grid[row][col] = numbers[numIndex];
-                numIndex++;
+  
             }
         }
     }
@@ -609,26 +592,6 @@ function parseBingoFromText(text) {
         throw error; // Re-throw so the main function can handle it
     }
 }
-        
-function getDefaultBingoCard() {
-    // Generate a valid bingo card with proper column ranges
-    const card = [];
-    const columnRanges = [[1, 15], [16, 30], [31, 45], [46, 60], [61, 75]];
-    
-    for (let row = 0; row < 5; row++) {
-        card[row] = [];
-        for (let col = 0; col < 5; col++) {
-            if (row === 2 && col === 2) {
-                card[row][col] = 'FREE';
-            } else {
-                const [min, max] = columnRanges[col];
-                card[row][col] = Math.floor(Math.random() * (max - min + 1)) + min;
-            }
-        }
-    }
-    
-    return card;
-}        
         
 // Helper function to convert file to base64
 function fileToBase64(file) {
