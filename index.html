@@ -440,6 +440,9 @@
     
 } catch (error) {
     showError('Error analyzing cards: ' + error.message);
+} finally {
+    loading.style.display = 'none';
+}
 }
 
         // Real OCR using Google Vision API
