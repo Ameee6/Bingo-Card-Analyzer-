@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo Card Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-section:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        .upload-section.dragover {
+            border-color: #ff6b6b;
+            background: #fff5f5;
+            transform: scale(1.02);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .preview-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card-preview {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card-preview:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .card-info {
+            padding: 20px;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .number-cell {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 8px 4px;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .number-cell.odd {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .number-cell.even {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .number-cell.free {
+            background: #e2e3e5;
+            border-color: #6c757d;
+            color: #495057;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 30px auto;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .summary h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .summary-item {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .summary-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .summary-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .upload-section {
+                padding: 20px;
+            }
+            
+            .preview-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Bingo Card Analyzer</h1>
+            <p>Upload photos of your bingo cards to analyze odds and evens</p>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section" id="uploadSection">
+                <div>
+                    <h3>📸 Upload Bingo Card Photos</h3>
+                    <p>Drag and drop up to 10 images or click to select</p>
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choose Files
+                    </button>
+                    <input type="file" id="fileInput" class="file-input" multiple accept="image/*">
+                    <p style="margin-top: 15px; color: #666; font-size: 0.9rem;">
+                        Supports JPG, PNG, WebP • Max 10 files
+                    </p>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing bingo cards...</p>
+            </div>
+
+            <div class="preview-section" id="previewSection"></div>
+
+            <button class="analyze-btn" id="analyzeBtn" onclick="analyzeCards()" style="display: none;">
+                🔍 Analyze All Cards
+            </button>
+
+            <div class="summary" id="summary" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let uploadedFiles = [];
+        let analyzedCards = [];
+
+        // File upload handling
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const previewSection = document.getElementById('previewSection');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const summary = document.getElementById('summary');
+
+        fileInput.addEventListener('change', handleFiles);
+
+        // Drag and drop
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            handleFileList(files);
+        });
+
+        function handleFiles(e) {
+            const files = Array.from(e.target.files);
+            handleFileList(files);
+        }
+
+        function handleFileList(files) {
+            // Limit to 10 files
+            const validFiles = files.filter(file => file.type.startsWith('image/')).slice(0, 10);
+            
+            if (validFiles.length === 0) {
+                showError('Please select valid image files.');
+                return;
+            }
+
+            uploadedFiles = validFiles;
+            displayPreviews();
+            analyzeBtn.style.display = 'block';
+        }
+
+        function displayPreviews() {
+            previewSection.innerHTML = '';
+            
+            uploadedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = 'card-preview';
+                    cardDiv.innerHTML = `
+                        <img src="${e.target.result}" alt="Bingo Card ${index + 1}" class="card-image">
+                        <div class="card-info">
+                            <div class="card-title">Card ${index + 1}</div>
+                            <p style="color: #666;">Ready for analysis</p>
+                        </div>
+                    `;
+                    previewSection.appendChild(cardDiv);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function analyzeCards() {
+            loading.style.display = 'block';
+            analyzeBtn.style.display = 'none';
+            analyzedCards = [];
+
+            try {
+                for (let i = 0; i < uploadedFiles.length; i++) {
+                    const file = uploadedFiles[i];
+                    
+                    // Simulate OCR analysis - in a real app, you'd use OCR API
+                    const numbers = await simulateOCR(file);
+                    const analysis = analyzeNumbers(numbers);
+                    
+                    analyzedCards.push({
+                        cardNumber: i + 1,
+                        numbers: numbers,
+                        ...analysis
+                    });
+                    
+                    updateCardDisplay(i, numbers, analysis);
+                }
+
+                displaySummary();
+                
+            } catch (error) {
+                showError('Error analyzing cards: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Simulate OCR - replace with real OCR API
+        async function simulateOCR(file) {
+            // Simulate processing delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Generate realistic bingo numbers for demo
+            const numbers = [];
+            
+            // B column: 1-15
+            numbers.push(Math.floor(Math.random() * 15) + 1);
+            // I column: 16-30
+            numbers.push(Math.floor(Math.random() * 15) + 16);
+            // N column: 31-45 (with FREE space)
+            numbers.push(Math.floor(Math.random() * 15) + 31);
+            numbers.push('FREE');
+            numbers.push(Math.floor(Math.random() * 15) + 31);
+            // G column: 46-60
+            numbers.push(Math.floor(Math.random() * 15) + 46);
+            // O column: 61-75
+            numbers.push(Math.floor(Math.random() * 15) + 61);
+
+            // Add more numbers for a 5x5 grid (25 total, with FREE in center)
+            while (numbers.length < 24) {
+                const num = Math.floor(Math.random() * 75) + 1;
+                if (!numbers.includes(num)) {
+                    numbers.push(num);
+                }
+            }
+
+            // Arrange as 5x5 grid with FREE in center
+            const grid = [];
+            let index = 0;
+            for (let row = 0; row < 5; row++) {
+                grid[row] = [];
+                for (let col = 0; col < 5; col++) {
+                    if (row === 2 && col === 2) {
+                        grid[row][col] = 'FREE';
+                    } else {
+                        grid[row][col] = numbers[index++];
+                    }
+                }
+            }
+
+            return grid;
+        }
+
+        function analyzeNumbers(grid) {
+            let odds = 0;
+            let evens = 0;
+            let total = 0;
+
+            grid.forEach(row => {
+                row.forEach(cell => {
+                    if (cell !== 'FREE' && typeof cell === 'number') {
+                        total++;
+                        if (cell % 2 === 0) {
+                            evens++;
+                        } else {
+                            odds++;
+                        }
+                    }
+                });
+            });
+
+            return { odds, evens, total };
+        }
+
+        function updateCardDisplay(index, grid, analysis) {
+            const cardDiv = previewSection.children[index];
+            const cardInfo = cardDiv.querySelector('.card-info');
+            
+            let gridHTML = '<div class="numbers-grid">';
+            grid.forEach(row => {
+                row.forEach(cell => {
+                    let cellClass = 'number-cell';
+                    if (cell === 'FREE') {
+                        cellClass += ' free';
+                    } else if (cell % 2 === 0) {
+                        cellClass += ' even';
+                    } else {
+                        cellClass += ' odd';
+                    }
+                    gridHTML += `<div class="${cellClass}">${cell}</div>`;
+                });
+            });
+            gridHTML += '</div>';
+
+            cardInfo.innerHTML = `
+                <div class="card-title">Card ${index + 1}</div>
+                ${gridHTML}
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-number">${analysis.odds}</div>
+                        <div class="stat-label">Odds</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${analysis.evens}</div>
+                        <div class="stat-label">Evens</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number">${analysis.total}</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displaySummary() {
+            const totalOdds = analyzedCards.reduce((sum, card) => sum + card.odds, 0);
+            const totalEvens = analyzedCards.reduce((sum, card) => sum + card.evens, 0);
+            const totalNumbers = analyzedCards.reduce((sum, card) => sum + card.total, 0);
+            const avgOdds = (totalOdds / analyzedCards.length).toFixed(1);
+            const avgEvens = (totalEvens / analyzedCards.length).toFixed(1);
+
+            summary.innerHTML = `
+                <h3>📊 Analysis Summary</h3>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-number">${analyzedCards.length}</div>
+                        <div class="summary-label">Cards Analyzed</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number">${totalOdds}</div>
+                        <div class="summary-label">Total Odds</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number">${totalEvens}</div>
+                        <div class="summary-label">Total Evens</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number">${avgOdds}</div>
+                        <div class="summary-label">Avg Odds/Card</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number">${avgEvens}</div>
+                        <div class="summary-label">Avg Evens/Card</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-number">${totalNumbers}</div>
+                        <div class="summary-label">Total Numbers</div>
+                    </div>
+                </div>
+            `;
+            summary.style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            uploadSection.after(errorDiv);
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+    </script>
+</body>
+</html>
