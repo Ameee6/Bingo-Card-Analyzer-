@@ -408,31 +408,39 @@
             analyzeBtn.style.display = 'none';
             analyzedCards = [];
 
-            try {
-                for (let i = 0; i < uploadedFiles.length; i++) {
-                    const file = uploadedFiles[i];
-                    
-                    // Simulate OCR analysis - in a real app, you'd use OCR API
-                    const numbers = await performOCR(file);
-                    const analysis = analyzeNumbers(numbers);
-                    
-                    analyzedCards.push({
-                        cardNumber: i + 1,
-                        numbers: numbers,
-                        ...analysis
-                    });
-                    
-                    updateCardDisplay(i, numbers, analysis);
-                }
-
-                displaySummary();
-                
-            } catch (error) {
-                showError('Error analyzing cards: ' + error.message);
-            } finally {
-                loading.style.display = 'none';
-            }
+           try {
+    for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
+        
+        try {
+            const numbers = await performOCR(file);
+            const analysis = analyzeNumbers(numbers);
+            
+            analyzedCards.push({
+                cardNumber: i + 1,
+                numbers: numbers,
+                ...analysis
+            });
+            
+            updateCardDisplay(i, numbers, analysis);
+            
+        } catch (cardError) {
+            showError(`Card ${i + 1}: ${cardError.message} Please retake this photo with better lighting and focus.`);
+            // Skip this card and continue with others
         }
+    }
+
+    if (analyzedCards.length === 0) {
+        showError('No cards could be analyzed. Please take clearer photos with better lighting.');
+        return;
+    }
+    
+    // Remove the summary display since we don't need totals
+    // displaySummary(); // ← DELETE THIS LINE
+    
+} catch (error) {
+    showError('Error analyzing cards: ' + error.message);
+}
 
         // Real OCR using Google Vision API
 async function performOCR(file) {
@@ -480,26 +488,60 @@ if (data.responses && data.responses[0] && data.responses[0].textAnnotations) {
 }
 
         // Parse bingo numbers from OCR text
+// Smart bingo number extraction and validation
 function parseBingoFromText(text) {
     try {
-        console.log('OCR Text:', text); // This will help us see what Google Vision found
+        console.log('OCR Text:', text);
         
-        // Extract all numbers from the text
-        const numbers = text.match(/\d+/g);
-        console.log('Raw numbers found:', numbers); 
-        
-        if (!numbers || numbers.length < 20) {
-            console.log('Not enough numbers found, using default card');
-            return getDefaultBingoCard();
+        // Smart bingo number extraction
+        function extractBingoNumbers(text) {
+            const allNumbers = text.match(/\d+/g) || [];
+            const validNumbers = [];
+            
+            for (let num of allNumbers) {
+                const n = parseInt(num);
+                
+                // If it's a valid single bingo number, keep it
+                if (n >= 1 && n <= 75) {
+                    validNumbers.push(n);
+                }
+                // If it's a big number, try to split it into valid bingo numbers
+                else if (num.length > 2) {
+                    // Try different ways to split the number
+                    const splits = [
+                        [num.slice(0,1), num.slice(1,3), num.slice(3)],        // 1|93|4
+                        [num.slice(0,2), num.slice(2,4), num.slice(4)],        // 19|34|
+                        [num.slice(0,1), num.slice(1,3), num.slice(3,5), num.slice(5)], // 1|93|44|9
+                        [num.slice(0,2), num.slice(2)],                        // 19|34
+                        [num.slice(0,1), num.slice(1)]                         // 1|9
+                    ];
+                    
+                    for (let split of splits) {
+                        const splitNumbers = split
+                            .filter(s => s && s.length > 0 && s.length <= 2)
+                            .map(s => parseInt(s))
+                            .filter(n => n >= 1 && n <= 75);
+                        
+                        if (splitNumbers.length >= 2) {
+                            validNumbers.push(...splitNumbers);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            return validNumbers;
         }
         
-        // Convert to integers and filter for valid bingo numbers (1-75)
-        const validNumbers = numbers
-            .map(n => parseInt(n))
-            .filter(n => n >= 1 && n <= 99)
-            .slice(0, 24); // Take first 24 numbers (25 minus FREE space)
+        const numbers = extractBingoNumbers(text);
+        console.log('Extracted valid numbers:', numbers);
         
-        // Create 5x5 grid
+        // We need exactly 24 numbers for a complete bingo card
+        if (!numbers || numbers.length < 24) {
+            throw new Error(`Only found ${numbers ? numbers.length : 0} valid bingo numbers. Need 24 for accurate analysis.`);
+        }
+        
+        // Create 5x5 grid with the first 24 numbers
         const grid = [];
         let numIndex = 0;
         
@@ -509,7 +551,7 @@ function parseBingoFromText(text) {
                 if (row === 2 && col === 2) {
                     grid[row][col] = 'FREE';
                 } else {
-                    grid[row][col] = validNumbers[numIndex] || Math.floor(Math.random() * 75) + 1;
+                    grid[row][col] = numbers[numIndex];
                     numIndex++;
                 }
             }
@@ -518,8 +560,8 @@ function parseBingoFromText(text) {
         return grid;
         
     } catch (error) {
-        console.error('Parse error:', error);
-        return getDefaultBingoCard();
+        console.error('Parse error:', error.message);
+        throw error; // Re-throw so the main function can handle it
     }
 }
         
