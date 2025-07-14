@@ -486,6 +486,7 @@ function parseBingoFromText(text) {
         
         // Extract all numbers from the text
         const numbers = text.match(/\d+/g);
+        console.log('Raw numbers found:', numbers); 
         
         if (!numbers || numbers.length < 20) {
             console.log('Not enough numbers found, using default card');
