@@ -435,9 +435,6 @@
         return;
     }
     
-    // Remove the summary display since we don't need totals
-    // displaySummary(); // ← DELETE THIS LINE
-    
 } catch (error) {
     showError('Error analyzing cards: ' + error.message);
 } finally {
@@ -452,7 +449,7 @@
         const base64 = await fileToBase64(file);
         const base64Content = base64.split(',')[1];
         
-        const API_KEY = 'your-new-restricted-key-here'; // Replace with your new key
+        const API_KEY = 'AIzaSyAjyp2lzvBRpTTXOLMGeeCSccw_iC5vs60'; // Replace with your new key
         
         const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${API_KEY}`, {
             method: 'POST',
