@@ -449,7 +449,7 @@
         const base64 = await fileToBase64(file);
         const base64Content = base64.split(',')[1];
         
-        const API_KEY = 'your-api-key-here';
+        const API_KEY = 'AIzaSyAjyp2lzvBRpTTXOLMGeeCSccw_iC5vs60';
         
         const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${API_KEY}`, {
             method: 'POST',
