@@ -444,12 +444,12 @@
 
         // Real OCR using Google Vision API
 
-        async function performOCR(file) {
+       async function performOCR(file) {
     try {
         const base64 = await fileToBase64(file);
         const base64Content = base64.split(',')[1];
         
-        const API_KEY = 'AIzaSyAjyp2lzvBRpTTXOLMGeeCSccw_iC5vs60'; // Replace with your new key
+        const API_KEY = 'your-api-key-here';
         
         const response = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${API_KEY}`, {
             method: 'POST',
@@ -457,7 +457,9 @@
             body: JSON.stringify({
                 requests: [{
                     image: { content: base64Content },
-                    features: [{ type: 'DOCUMENT_TEXT_DETECTION' }]
+                    features: [{
+                        type: 'DOCUMENT_TEXT_DETECTION'
+                    }]
                 }]
             })
         });
@@ -466,7 +468,7 @@
         
         if (data.responses && data.responses[0] && data.responses[0].fullTextAnnotation) {
             const text = data.responses[0].fullTextAnnotation.text;
-            return parseBingoFromText(text);
+            return analyzeByColumns(text);
         } else {
             throw new Error('No text found in image. Please try a clearer photo.');
         }
@@ -475,56 +477,57 @@
         throw new Error(`OCR failed: ${error.message}`);
     }
 }
-        
-function parseBingoFromText(text) {
-    try {
-        console.log('OCR Text:', text);
-        
-        // Split text into lines to find the grid pattern
-        const lines = text.split('\n').map(line => line.trim());
-        
-        // Look for lines that contain multiple valid bingo numbers
-        const gridLines = [];
-        
-        for (let line of lines) {
-            // Extract numbers from this line
-            const lineNumbers = (line.match(/\b\d{1,2}\b/g) || [])
-                .map(n => parseInt(n))
-                .filter(n => n >= 1 && n <= 75);
-            
-            // If this line has 3-5 valid bingo numbers, it's probably a grid row
-            if (lineNumbers.length >= 3 && lineNumbers.length <= 5) {
-                gridLines.push(lineNumbers);
-            }
-        }
-        
-        console.log('Found grid lines:', gridLines);
-        
-        // We need exactly 5 rows for a complete bingo card
-        if (gridLines.length !== 5) {
-            throw new Error(`Found ${gridLines.length} grid rows, need exactly 5. Please try a clearer photo with the full bingo grid visible.`);
-        }
-        
-        // Build the 5x5 grid, handling the FREE space
-        const grid = [];
-        for (let i = 0; i < 5; i++) {
-            const row = gridLines[i];
-            if (row.length === 4 && i === 2) {
-                // Middle row with FREE space - insert FREE in the middle
-                grid[i] = [row[0], row[1], 'FREE', row[2], row[3]];
-            } else if (row.length === 5) {
-                grid[i] = row;
+
+function analyzeByColumns(text) {
+    console.log('OCR Text:', text);
+    
+    // Extract all numbers from the text
+    const allNumbers = (text.match(/\b\d{1,2}\b/g) || [])
+        .map(n => parseInt(n))
+        .filter(n => n >= 1 && n <= 75);
+    
+    console.log('All valid numbers found:', allNumbers);
+    
+    // Separate by bingo columns
+    const bColumn = allNumbers.filter(n => n >= 1 && n <= 15);   // B column
+    const iColumn = allNumbers.filter(n => n >= 16 && n <= 30);  // I column  
+    const nColumn = allNumbers.filter(n => n >= 31 && n <= 45);  // N column (should have 4)
+    const gColumn = allNumbers.filter(n => n >= 46 && n <= 60);  // G column
+    const oColumn = allNumbers.filter(n => n >= 61 && n <= 75);  // O column
+    
+    console.log('B column (1-15):', bColumn);
+    console.log('I column (16-30):', iColumn);
+    console.log('N column (31-45):', nColumn);
+    console.log('G column (46-60):', gColumn);
+    console.log('O column (61-75):', oColumn);
+    
+    // Count odds and evens for each column
+    let totalOdds = 0;
+    let totalEvens = 0;
+    
+    [bColumn, iColumn, nColumn, gColumn, oColumn].forEach(column => {
+        column.forEach(num => {
+            if (num % 2 === 0) {
+                totalEvens++;
             } else {
-                throw new Error(`Row ${i + 1} has ${row.length} numbers, expected 4 or 5. Please try a clearer photo.`);
+                totalOdds++;
             }
-        }
-        
-        return grid;
-        
-    } catch (error) {
-        console.error('Parse error:', error.message);
-        throw error;
+        });
+    });
+    
+    // Verify we have reasonable numbers
+    const totalNumbers = bColumn.length + iColumn.length + nColumn.length + gColumn.length + oColumn.length;
+    
+    if (totalNumbers < 20) {
+        throw new Error(`Only found ${totalNumbers} total numbers. Expected around 24. Please try a clearer photo.`);
     }
+    
+    return { 
+        odds: totalOdds, 
+        evens: totalEvens, 
+        total: totalNumbers,
+        breakdown: { bColumn, iColumn, nColumn, gColumn, oColumn }
+    };
 }
         
 // Helper function to convert file to base64
